@@ -10,7 +10,7 @@ import (
 
 func TestCreateQueryArgs(t *testing.T) {
 	os.Setenv(releaseEnvKey, "myrelease")
-	os.Setenv(pipelineEnvKey, "mypipeline1")
+	os.Setenv(pipelineEnvKey, "mypipeline")
 	os.Setenv(targetEnvKey, "mytarget")
 	os.Setenv(projectEnvKey, "myproject")
 	os.Setenv(locationEnvKey, "losangeles")
@@ -25,9 +25,9 @@ func TestCreateQueryArgs(t *testing.T) {
 			includeReleaseLabel: false,
 			wantArgs: []string{
 				"api-resources",
-				"verbs=list",
+				"--verbs=list",
 				"-o name",
-				"-l deploy.cloud.google.com/delivery-pipeline-id=mypipeline,deploy.cloud.google.com/target-id=mytarget,deploy.cloud.google.com/location=losangeles,deploy.cloud.google.com/project-id=my-project,",
+				"-l deploy.cloud.google.com/delivery-pipeline-id=mypipeline,deploy.cloud.google.com/target-id=mytarget,deploy.cloud.google.com/location=losangeles,deploy.cloud.google.com/project-id=myproject",
 				"|",
 				"xargs",
 				"-n 1",
@@ -41,9 +41,9 @@ func TestCreateQueryArgs(t *testing.T) {
 			includeReleaseLabel: true,
 			wantArgs: []string{
 				"api-resources",
-				"verbs=list",
+				"--verbs=list",
 				"-o name",
-				"-l deploy.cloud.google.com/release-id=myrelease,deploy.cloud.google.com/delivery-pipeline-id=mypipeline,deploy.cloud.google.com/target-id=mytarget,deploy.cloud.google.com/location=losangeles,deploy.cloud.google.com/project-id=my-project,",
+				"-l deploy.cloud.google.com/release-id=myrelease,deploy.cloud.google.com/delivery-pipeline-id=mypipeline,deploy.cloud.google.com/target-id=mytarget,deploy.cloud.google.com/location=losangeles,deploy.cloud.google.com/project-id=myproject",
 				"|",
 				"xargs",
 				"-n 1",

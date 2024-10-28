@@ -24,7 +24,7 @@ const (
 func createQueryArgs(includeReleaseLabel bool) []string {
 	var labels []string
 	if includeReleaseLabel {
-		labels = append(labels, fmt.Sprintf("%srelease-id=%s", cloudDeployPrefix, os.Getenv(targetEnvKey)))
+		labels = append(labels, fmt.Sprintf("%srelease-id=%s", cloudDeployPrefix, os.Getenv(releaseEnvKey)))
 	}
 	labels = append(labels, fmt.Sprintf("%sdelivery-pipeline-id=%s", cloudDeployPrefix, os.Getenv(pipelineEnvKey)))
 	labels = append(labels, fmt.Sprintf("%starget-id=%s", cloudDeployPrefix, os.Getenv(targetEnvKey)))
@@ -40,8 +40,11 @@ func createQueryArgs(includeReleaseLabel bool) []string {
 		"--verbs=list",
 		outputNameArg,
 		labelArg,
-		"| xargs -n 1",
-		"kubectl get",
+		"|",
+		"xargs",
+		"-n 1",
+		"kubectl",
+		"get",
 		outputNameArg,
 	}
 }
