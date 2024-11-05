@@ -42,13 +42,13 @@ func createQueryArgs(includeReleaseLabel bool) []string {
 		"api-resources",
 		"--verbs=list",
 		outputNameArg,
-		labelArg,
 		"|",
 		"xargs",
 		"-n 1",
 		"kubectl",
 		"get",
 		outputNameArg,
+		labelArg,
 	}
 }
 
@@ -124,7 +124,7 @@ func diffSlices(slice1, slice2 []string) []string {
 }
 
 // Get a list of resources that aren't in the current set of resources.
-func (ce CommandExecutor) getDiff() ([]string, error) {
+func (ce CommandExecutor) getOldResources() ([]string, error) {
 	// Get a list of all resources on the cluster.
 	argsAll := createQueryArgs(false)
 	output, err := ce.execCommand(argsAll)
