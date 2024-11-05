@@ -143,3 +143,17 @@ func (ce CommandExecutor) getOldResources() ([]string, error) {
 
 	return diffSlices(allResources, currentResources), nil
 }
+
+// deleteResources deletes the resources given.
+func (ce CommandExecutor) deleteResources(resources []string) error {
+	// Loop over and delete one by one
+	for _, resource := range resources {
+		args := []string{"delete", resource}
+		_, err := ce.execCommand(args)
+		if err != nil {
+			fmt.Printf("Attempting to delete resource %v resulted in err %v", resource, err)
+			return err
+		}
+	}
+	return nil
+}
