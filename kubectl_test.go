@@ -54,9 +54,9 @@ func TestCreateQueryArgs(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			gotArgs := createQueryArgs(tc.includeReleaseLabel)
+			gotArgs := kubectlGetArgs(tc.includeReleaseLabel)
 			if diff := cmp.Diff(tc.wantArgs, gotArgs); diff != "" {
-				t.Errorf("createQueryArgs() produced diff (-want, +got):\n%s", diff)
+				t.Errorf("kubectlGetArgs() produced diff (-want, +got):\n%s", diff)
 			}
 		})
 	}
