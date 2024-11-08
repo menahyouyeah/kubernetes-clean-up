@@ -2,13 +2,21 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 )
 
+var (
+	namespace    = flag.String("namespace", "", "Namespace to filter on when finding resources to delete")
+	resourceType = flag.String("resource-type", "", "Resource type to filter on when finding resources to delete.")
+)
+
 func main() {
+	flag.Parse()
+
 	if err := do(); err != nil {
 		fmt.Printf("err: %v\n", err)
 		os.Exit(1)
@@ -20,7 +28,7 @@ func main() {
 func do() error {
 	// Step 1 get old resources
 	kubectlExec := CreateCommandExecutor("kubectl")
-	oldResources, err := kubectlExec.getOldResources()
+	oldResources, err := kubectlExec.getOldResources(*namespace, *resourceType)
 	if err != nil {
 		return err
 	}
