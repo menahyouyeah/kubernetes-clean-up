@@ -14,42 +14,49 @@ const (
 	locationEnvKey    = "CLOUD_DEPLOY_LOCATION"
 	pipelineEnvKey    = "CLOUD_DEPLOY_DELIVERY_PIPELINE"
 	targetEnvKey      = "CLOUD_DEPLOY_TARGET"
-	outputNameArg     = "-o name"
+	outputFlag        = "-o"
+	nameArg           = "name"
 )
 
-// Get a list of resources that aren't in the current set of resources.
-func (ce CommandExecutor) getOldResources(namespace, resourceTypeFlag string) ([]string, error) {
-	// Step 1. Get a list of resource types to query
+// resourcesToDelete returns a list of resources that are not in the current set of resources
+// (i.e. the set of resources that were just deployed by Cloud Deploy in the most recent release).
+func (ce CommandExecutor) resourcesToDelete(namespace, resourceTypeFlag string) ([]string, error) {
+	// Step 1. Get a list of resource types to query.
 	resourceTypes, err := ce.resourceTypesToQuery(resourceTypeFlag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get a list of resources types to query, err: %w", err)
 	}
 
-	// Get a list of all resources on the cluster.
-	allResources, err := ce.getResources(false, namespace, resourceTypes)
+	// Step 2. Get a list of all resources on the cluster that were deployed by Cloud Deploy.
+	allResources, err := ce.resources(false, namespace, resourceTypes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get a list of resources on the cluster, err: %w", err)
 	}
 
-	// Get a list of resources that were deployed as part of the latest release on the cluster.
-	currentResources, err := ce.getResources(true, namespace, resourceTypes)
+	// Step 3. Get a list of resources that were deployed by Cloud Deploy as part of the latest
+	// release on the cluster.
+	currentResources, err := ce.resources(true, namespace, resourceTypes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get a list of current resources on the cluster, err: %w", err)
 	}
 
+	// Step 4. Do a diff to determine what resources were not deployed in the latest release and
+	// should therefore be deleted.
 	return diffSlices(allResources, currentResources), nil
 }
 
+// apiResourceQueryArgs returns the args to pass to kubectl to get a list of supported resource
+// types on the cluster.
 func apiResourcesQueryArgs() []string {
 	return []string{
 		"api-resources",
 		"--verbs=list",
-		"-o",
-		"name",
+		outputFlag,
+		nameArg,
 	}
 }
 
-// kubectlGetArgs returns the get args.
+// kubectlGetArgs returns the args to pass to kubectl to get the resource name.
 func kubectlGetArgs(includeReleaseLabel bool, resourceType string, nspace string) []string {
 	var labels []string
 	if includeReleaseLabel {
@@ -62,31 +69,21 @@ func kubectlGetArgs(includeReleaseLabel bool, resourceType string, nspace string
 
 	labelsFormatted := strings.Join(labels, ",")
 	labelArg := fmt.Sprintf("-l %s", labelsFormatted)
-
-	return []string{
+	args := []string{
 		"get",
-		"-o",
-		"name",
+		outputFlag,
+		nameArg,
 		labelArg,
-		fmt.Sprintf("--namespace=%s", nspace),
-		resourceType,
 	}
+	if nspace != "" {
+		args = append(args, fmt.Sprintf("--namespace=%s", nspace))
+	}
+	args = append(args, resourceType)
+
+	return args
 }
 
-// get kubernetes resources
-func (ce CommandExecutor) getResources(includeReleaseLabel bool, namespace string, resourceTypes []string) ([]string, error) {
-
-	var resources []string
-	for _, r := range resourceTypes {
-		beep, err := ce.getResourcesPerType(includeReleaseLabel, namespace, r)
-		if err != nil {
-			return nil, fmt.Errorf("attempting to get resource type \"%v\" resulted in err: %w", r, err)
-		}
-		resources = append(resources, beep...)
-	}
-	return resources, nil
-}
-
+// resourceTypesToQuery returns a list of resource types to query based on the command line flag value.
 func (ce CommandExecutor) resourceTypesToQuery(resourceType string) ([]string, error) {
 	var resourceTypes []string
 	if resourceType != "" {
@@ -97,40 +94,51 @@ func (ce CommandExecutor) resourceTypesToQuery(resourceType string) ([]string, e
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute kubectl api-resources command: %w", err)
 		}
-		temp := strings.Split(output, "\n")
+		outputSplit := strings.Split(output, "\n")
 		// Delete the empty line at the end
-		resourceTypes = slices.DeleteFunc(temp, func(e string) bool {
-			return e == ""
-		})
+		resourceTypes = slices.DeleteFunc(outputSplit, isEmpty)
 	}
 	return resourceTypes, nil
 }
 
-func (ce CommandExecutor) getResourcesPerType(includeReleaseLabel bool, namespace string, resourceType string) ([]string, error) {
+// resources returns a list of resources, given a list of resource types to query on the cluster.
+func (ce CommandExecutor) resources(includeReleaseLabel bool, namespaces string, resourceTypes []string) ([]string, error) {
+
 	var resources []string
-	namespaces := strings.Split(namespace, ",")
-	for _, n := range namespaces {
+	for _, r := range resourceTypes {
+		res, err := ce.resourcesPerType(includeReleaseLabel, namespaces, r)
+		if err != nil {
+			return nil, fmt.Errorf("attempting to get resource type \"%v\" resulted in err: %w", r, err)
+		}
+		resources = append(resources, res...)
+	}
+	return resources, nil
+}
+
+// resourcesPerType returns a list of resources per type.
+func (ce CommandExecutor) resourcesPerType(includeReleaseLabel bool, namespaces string, resourceType string) ([]string, error) {
+	var resources []string
+	// Multiple namespaces could have been specified in the command line arg, split and loop through each.
+	nspaces := strings.Split(namespaces, ",")
+	for _, n := range nspaces {
 		args := kubectlGetArgs(includeReleaseLabel, resourceType, n)
 		output, err := ce.execCommand(args)
 		if err != nil {
 			return nil, fmt.Errorf("attempting to get resource type \"%v\" resulted in err: %w", resourceType, err)
 		}
 		if output != "" {
-			// Separate out by line break
-			temp := strings.Split(output, "\n")
-			slices.DeleteFunc(temp, func(e string) bool {
-				return e == ""
-			})
-			resources = append(resources, temp...)
+			// Separate out by line break and delete the empty line at the end.
+			outputSplit := strings.Split(output, "\n")
+			outputSplit = slices.DeleteFunc(outputSplit, isEmpty)
+			resources = append(resources, outputSplit...)
 		}
 	}
 	return resources, nil
 
 }
 
-// deleteResources deletes the resources given.
-func (ce CommandExecutor) DeleteResources(resources []string) error {
-	// Loop over and delete one by one
+// deleteResources deletes the given resources.
+func (ce CommandExecutor) deleteResources(resources []string) error {
 	fmt.Printf("Beginning to delete resources, there are %d resources to delete\n", len(resources))
 	for _, resource := range resources {
 		args := []string{"delete", resource}
@@ -140,4 +148,8 @@ func (ce CommandExecutor) DeleteResources(resources []string) error {
 		}
 	}
 	return nil
+}
+
+func isEmpty(e string) bool {
+	return e == ""
 }
