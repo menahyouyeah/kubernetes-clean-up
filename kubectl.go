@@ -141,7 +141,7 @@ func (ce CommandExecutor) resourcesPerType(includeReleaseLabel bool, namespaces 
 func (ce CommandExecutor) deleteResources(resources []string) error {
 	fmt.Printf("Beginning to delete resources, there are %d resources to delete\n", len(resources))
 	for _, resource := range resources {
-		args := []string{"delete", resource}
+		args := []string{"delete", resource, "--ignore-not-found=true"}
 		_, err := ce.execCommand(args)
 		if err != nil {
 			return fmt.Errorf("attempting to delete resource %v resulted in err: %w", resource, err)
