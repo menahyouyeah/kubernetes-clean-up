@@ -58,6 +58,11 @@ func apiResourcesQueryArgs() []string {
 
 // kubectlGetArgs returns the args to pass to kubectl to get the resource name.
 func kubectlGetArgs(includeReleaseLabel bool, resourceType string, nspace string) []string {
+	// m := gkeClusterRegex.FindStringSubmatch(os.Getenv("GKE_CLUSTER"))
+	// if len(m) == 0 {
+	// 	return fmt.Errorf("invalid GKE cluster name: %s", gkeCluster)
+	// }
+
 	var labels []string
 	if includeReleaseLabel {
 		labels = append(labels, fmt.Sprintf("%srelease-id=%s", cloudDeployPrefix, os.Getenv(releaseEnvKey)))
@@ -65,7 +70,7 @@ func kubectlGetArgs(includeReleaseLabel bool, resourceType string, nspace string
 	labels = append(labels, fmt.Sprintf("%sdelivery-pipeline-id=%s", cloudDeployPrefix, os.Getenv(pipelineEnvKey)))
 	labels = append(labels, fmt.Sprintf("%starget-id=%s", cloudDeployPrefix, os.Getenv(targetEnvKey)))
 	labels = append(labels, fmt.Sprintf("%slocation=%s", cloudDeployPrefix, os.Getenv(locationEnvKey)))
-	labels = append(labels, fmt.Sprintf("%sproject-id=%s", cloudDeployPrefix, os.Getenv(projectEnvKey)))
+	labels = append(labels, fmt.Sprintf("%sproject-id=%s", cloudDeployPrefix, os.Getenv("PROJECT_ID")))
 
 	labelsFormatted := strings.Join(labels, ",")
 	labelArg := fmt.Sprintf("-l %s", labelsFormatted)
