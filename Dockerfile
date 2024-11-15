@@ -11,18 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+ARG GCLOUD_VERSION=501.0.0
 
 FROM golang:1.23 AS build
 WORKDIR /cleanup
 COPY go.mod go.sum *.go ./
-COPY *.go ./
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o /cleanup-kubernetes-resources
 # Download kubectl
-RUN curl -L https://dl.k8s.io/release/v1.31/bin/linux/amd64/kubectl > kubectl \
-    && chmod +x kubectl
+RUN curl -L "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" > kubectl \
+    && chmod +x kubectl \
+    && mv kubectl /usr/bin/kubectl
 
-FROM gcr.io/distroless/static-debian11:latest AS release
+FROM  gcr.io/google.com/cloudsdktool/google-cloud-cli:${GCLOUD_VERSION}
 WORKDIR /
 COPY --from=build /cleanup-kubernetes-resources /cleanup-kubernetes-resources
+COPY --from=build /usr/bin/kubectl /usr/bin/kubectl
 CMD ["/cleanup-kubernetes-resources"]
