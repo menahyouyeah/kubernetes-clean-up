@@ -36,7 +36,6 @@ func do() error {
 	if err := gcloudClusterCredentials(gkeCluster); err != nil {
 		return err
 	}
-	//gcloud services enable cloudresourcemanager.googleapis.com
 
 	// Step 2. Get a list of resources to delete.
 	kubectlExec := CreateCommandExecutor("kubectl")
