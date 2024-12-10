@@ -1,0 +1,13 @@
+apiVersion: skaffold/v4beta7
+kind: Config
+manifests:
+  rawYaml:
+  - kubernetes.yaml
+deploy:
+  kubectl: {}
+customActions:
+- name: postdeploy-action
+  containers:
+  - name: clean-up-image
+    image: IMAGE
+    command: ["/cleanup-kubernetes-resources"]
