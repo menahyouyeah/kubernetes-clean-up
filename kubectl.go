@@ -10,7 +10,7 @@ import (
 const (
 	cloudDeployPrefix = "deploy.cloud.google.com/"
 	releaseEnvKey     = "CLOUD_DEPLOY_RELEASE"
-	projectEnvKey     = "CLOUD_DEPLOY_PROJECT"
+	projectEnvKey     = "CLOUD_DEPLOY_PROJECT_ID"
 	locationEnvKey    = "CLOUD_DEPLOY_LOCATION"
 	pipelineEnvKey    = "CLOUD_DEPLOY_DELIVERY_PIPELINE"
 	targetEnvKey      = "CLOUD_DEPLOY_TARGET"
@@ -28,14 +28,14 @@ func (ce CommandExecutor) resourcesToDelete(namespace, resourceTypeFlag string) 
 	}
 
 	// Step 2. Get a list of all resources on the cluster that were deployed by Cloud Deploy.
-	allResources, err := ce.resources(false, namespace, resourceTypes)
+	allResources, err := ce.listResources(false, namespace, resourceTypes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get a list of resources on the cluster, err: %w", err)
 	}
 
 	// Step 3. Get a list of resources that were deployed by Cloud Deploy as part of the latest
 	// release on the cluster.
-	currentResources, err := ce.resources(true, namespace, resourceTypes)
+	currentResources, err := ce.listResources(true, namespace, resourceTypes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get a list of current resources on the cluster, err: %w", err)
 	}
@@ -56,12 +56,9 @@ func apiResourcesQueryArgs() []string {
 	}
 }
 
-// kubectlGetArgs returns the args to pass to kubectl to get the resource name.
+// kubectlGetArgs returns the args to pass to kubectl to get the resource name,
+// given the resource type and namespace
 func kubectlGetArgs(includeReleaseLabel bool, resourceType string, nspace string) []string {
-	// m := gkeClusterRegex.FindStringSubmatch(os.Getenv("GKE_CLUSTER"))
-	// if len(m) == 0 {
-	// 	return fmt.Errorf("invalid GKE cluster name: %s", gkeCluster)
-	// }
 
 	var labels []string
 	if includeReleaseLabel {
@@ -70,7 +67,7 @@ func kubectlGetArgs(includeReleaseLabel bool, resourceType string, nspace string
 	labels = append(labels, fmt.Sprintf("%sdelivery-pipeline-id=%s", cloudDeployPrefix, os.Getenv(pipelineEnvKey)))
 	labels = append(labels, fmt.Sprintf("%starget-id=%s", cloudDeployPrefix, os.Getenv(targetEnvKey)))
 	labels = append(labels, fmt.Sprintf("%slocation=%s", cloudDeployPrefix, os.Getenv(locationEnvKey)))
-	labels = append(labels, fmt.Sprintf("%sproject-id=%s", cloudDeployPrefix, os.Getenv("PROJECT_ID")))
+	labels = append(labels, fmt.Sprintf("%sproject-id=%s", cloudDeployPrefix, os.Getenv(projectEnvKey)))
 
 	labelsFormatted := strings.Join(labels, ",")
 	labelArg := fmt.Sprintf("-l %s", labelsFormatted)
@@ -84,13 +81,14 @@ func kubectlGetArgs(includeReleaseLabel bool, resourceType string, nspace string
 		args = append(args, fmt.Sprintf("--namespace=%s", nspace))
 	}
 	args = append(args, resourceType)
-
 	return args
 }
 
 // resourceTypesToQuery returns a list of resource types to query based on the command line flag value.
 func (ce CommandExecutor) resourceTypesToQuery(resourceType string) ([]string, error) {
 	var resourceTypes []string
+	// If resourceType(s) were specified on the command line, use those. Otherwise
+	// get the list of supported resource types on the cluster.
 	if resourceType != "" {
 		resourceTypes = strings.Split(resourceType, ",")
 	} else {
@@ -106,8 +104,10 @@ func (ce CommandExecutor) resourceTypesToQuery(resourceType string) ([]string, e
 	return resourceTypes, nil
 }
 
-// resources returns a list of resources, given a list of resource types to query on the cluster.
-func (ce CommandExecutor) resources(includeReleaseLabel bool, namespaces string, resourceTypes []string) ([]string, error) {
+// listResources returns a list of resources, filtered by resource type, namespace,
+// and were deployed by Cloud Deploy. If includeReleaseLabel is true, it filtered
+// to resources that were deployed by the current release.
+func (ce CommandExecutor) listResources(includeReleaseLabel bool, namespaces string, resourceTypes []string) ([]string, error) {
 
 	var resources []string
 	for _, r := range resourceTypes {
