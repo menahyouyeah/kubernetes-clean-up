@@ -113,3 +113,16 @@ part of `my-release`.
 The `--images=` flag replaces the placeholder (my-app-image) in the kubernetes 
 manifest with the specific, SHA-qualified image. In the case of the samples, 
 an nginx container.
+
+# Additional configuration options
+
+There are two command line flags you can pass to the container:
+
+1. `namespace`: Namespace(s) to filter on when finding resources to delete. For 
+    multiple namespaces, separate them with a comma (e.g. `namespace=foo,bar`)
+2. `resource-type`: Resource type(s) to filter on when finding resources to
+    delete. For multiple resource types, separate them with a comma (e.g.
+    `resource-type=Replicaset,ciliumidentity.cilium.io`)
+
+Add the args in your skaffold config file in the customActions.containers
+stanza. See the sample skaffold.yaml file for an example that's commented out.
