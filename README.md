@@ -15,10 +15,23 @@ At a high level, the sample image:
 1. You will need to build the image and push it to a repository, accessible by
 Cloud Build.
 2. There is a sample clouddeploy.yaml, kubernetes.yaml and skaffold.yaml file in
-the config-sample directory. Either use those and replace the %PROJECT_ID%, 
-%REGION%, and %IMAGE% values or update your existing Cloud Deploy config
+the config-sample directory. Either use those and replace the PROJECT_ID, 
+REGION, and IMAGE values or update your existing Cloud Deploy config
 file to reference a post-deploy hook, and your Skaffold file to then reference
 the image you built.
+3. If using the samples, create a GKE cluster (note this can take 10 min to run):
+
+```
+gcloud container clusters create-auto cleanup-prod --project=PROJECT_ID --region=REGION
+```
+4. Do not disable cloud deploy labels via an org policy. If you have an org
+policy set that disables labels, this won’t work. This is because kubernetes 
+query uses the Cloud Deploy labels to filter to resources that were deployed
+by Cloud Deploy.
+
+Lastly, a quick note that if you have this postdeploy job configured then you
+should provide all resources in your manifests when creating a release, even if
+there's no change to prevent deletions. 
 
 # Building and pushing the image to a repo
 1. In the directory of this README, run the following command to build the image:
@@ -54,7 +67,11 @@ docker push us-central1-docker.pkg.dev/my-project/my-repo/clean-up-image
 # Update your config or use the sample configs
 
 If you're using the sample config, go to the `config-samples` folder, and replace
-the %PROJECT_ID%, %REGION%, and %IMAGE%. Save the three config files. An overview
+the PROJECT_ID and REGION in the clouddeploy.yaml file. Replace the IMAGE in the
+skaffold.yaml file with the image you built from this code. Save the three
+config files. 
+
+An overview
 of the configuration files:
 1. `clouddeploy.yaml`: Defines a Delivery Pipeline that references a single
 [GKE Target](https://cloud.google.com/deploy/docs/deploy-app-gke) and specifies
@@ -82,13 +99,17 @@ gcloud deploy apply --file=clouddeploy.yaml --region=REGION --project=PROJECT_ID
 Create a release and after the release has been deployed to the cluster, the
 post-deploy hook will run and delete any old resources that were previously 
 deploy by Cloud Deploy. If you're using the sample, the command would look 
-something like this:
+something like the below command. 
 
 ```
-gcloud deploy releases create my-release --project=PROJECT_ID --region=REGION --delivery-pipeline=my-pipeline    --images=my-app-image=gcr.io/google-containers/nginx@sha256:f49a843c290594dcf4d193535d1f4ba8af7d56cea2cf79d1e9554f077f1e7aaa
+gcloud deploy releases create my-release --project=PROJECT_ID --region=REGION --delivery-pipeline=mypipeline --images=my-app-image=gcr.io/google-containers/nginx@sha256:f49a843c290594dcf4d193535d1f4ba8af7d56cea2cf79d1e9554f077f1e7aaa
 ```
 
 Note: Unless you've used Cloud Deploy before to deploy to that cluster, nothing
 will be deleted. If you create a second release `my-release2`, then the post-deploy
 hook will actually do something and delete any resources that were deployed as
 part of `my-release`. 
+
+The `--images=` flag replaces the placeholder (my-app-image) in the kubernetes 
+manifest with the specific, SHA-qualified image. In the case of the samples, 
+an nginx container.
