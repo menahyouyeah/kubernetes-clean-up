@@ -5,7 +5,7 @@ metadata:
 description: pipeline that includes a post-deploy hook to clean up resources
 serialPipeline:
   stages:
-  - targetId: prod
+  - targetId: cleanup-prod
     profiles: []
     strategy:
       standard:
@@ -15,7 +15,8 @@ serialPipeline:
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
 metadata:
-  name: prod-example
-description: production cluster
+  name: cleanup-prod
+description: prod cluster
 gke:
-  cluster: projects/PROJECT_ID/locations/REGION/clusters/prod-example
+  # Replace PROJECT_ID and REGION below.
+  cluster: projects/PROJECT_ID/locations/REGION/clusters/cleanup-prod
