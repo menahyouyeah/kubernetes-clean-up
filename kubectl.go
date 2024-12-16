@@ -5,6 +5,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/go-ap/errors"
 )
 
 const (
@@ -16,6 +18,21 @@ const (
 	targetEnvKey      = "CLOUD_DEPLOY_TARGET"
 	outputFlag        = "-o"
 	nameArg           = "name"
+)
+
+var (
+	defaultResources = []string{
+		"service",
+		"cronjob.batch",
+		"job.batch",
+		"deployment.apps",
+		"replicaset.apps",
+		"statefulset.apps",
+		"pod",
+		"configmap",
+		"secret",
+		"horizontalpodautoscaler.autoscaling",
+	}
 )
 
 // resourcesToDelete returns a list of resources that are not in the current set of resources
@@ -87,9 +104,13 @@ func kubectlGetArgs(includeReleaseLabel bool, resourceType string, nspace string
 // resourceTypesToQuery returns a list of resource types to query based on the command line flag value.
 func (ce CommandExecutor) resourceTypesToQuery(resourceType string) ([]string, error) {
 	var resourceTypes []string
-	// If resourceType(s) were specified on the command line, use those. Otherwise
-	// get the list of supported resource types on the cluster.
-	if resourceType != "" {
+	// If resourceType(s) were specified on the command line, use those.
+	// Otherwise use the default list of resources to delete.
+	if resourceType == "" {
+		return defaultResources, nil
+	}
+
+	if strings.ToLower(resourceType) != "all" {
 		resourceTypes = strings.Split(resourceType, ",")
 	} else {
 		apiResourcesArgs := apiResourcesQueryArgs()
@@ -148,6 +169,12 @@ func (ce CommandExecutor) deleteResources(resources []string) error {
 	for _, resource := range resources {
 		args := []string{"delete", resource, "--ignore-not-found=true"}
 		_, err := ce.execCommand(args)
+		// If the code retured is MethodNotAllowed log that and continue. This
+		// has popped up for example when trying to delete the podmetrics resource.
+		if errors.IsMethodNotAllowed(err) {
+			fmt.Printf("Unable to delete resource: %s. Deleting that resource is not allowed.\n Continuing on to delete other resources.", resource)
+			continue
+		}
 		if err != nil {
 			return fmt.Errorf("attempting to delete resource %v resulted in err: %w", resource, err)
 		}
