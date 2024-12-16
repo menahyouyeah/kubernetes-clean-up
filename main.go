@@ -13,10 +13,13 @@ import (
 var (
 	namespace = flag.String("namespace", "", "Namespace(s) to filter on when finding resources to delete. "+
 		"For multiple namespaces, separate them with a comma. For example --namespace=foo,bar.")
-	resourceType = flag.String("resource-type", "", "Resource type(s) to filter on when finding resources to delete. "+
-		"If listing multiple resource types, separate them with commas. For example, --resource-type=Deployment,Job. "+
-		"You can also qualify the resource type by an API group if you want to specify resources only in a specific "+
-		"API group. For example --resource-type=deployments.apps")
+	resourceType = flag.String("resource-type",
+		"service,cronjob.batch,job.batch,deployment.apps,replicaset.apps,statefulset.apps,pod,configmap,secret,horizontalpodautoscaler.autoscaling",
+		"Comma separated list of resource type(s) to filter on when finding "+
+			"resources to delete. See default list above of resources that will"+
+			"be deleted. To have ALL resources deleted pass in \"all\". "+
+			"You can also qualify the resource type by an API group if you want"+
+			"to specify resources only in a specific API group. For example --resource-type=deployments.apps")
 )
 
 // gkeClusterRegex represents the regex that a GKE cluster resource name needs to match.
@@ -26,8 +29,8 @@ const (
 	// The name of the post-deploy hook cleanup sample, this is passed back to
 	// Cloud Deploy as metadata in the deploy results, mainly to keep track of
 	// how many times the sample is getting used.
-	cleanupSampleName         = "clouddeploy-cleanup-sample"
-	postdeployhookMetadataKey = "deploy-hook-source"
+	cleanupSampleName         = "clouddeploy-k8s-cleanup-sample"
+	postdeployhookMetadataKey = "postdeploy-hook-source"
 )
 
 func main() {
